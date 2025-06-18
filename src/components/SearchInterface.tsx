@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -79,55 +78,52 @@ export function SearchInterface() {
         province.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
         province.name_en.toLowerCase().includes(searchTerm.toLowerCase());
 
-      if (provinceMatches && provinceSearchMatches) {
-        // Add province to results if no specific amphure/tambon is selected
-        if (selectedAmphure === 'all' && selectedTambon === 'all') {
-          results.push({
-            type: 'province',
-            id: province.id,
-            name_th: province.name_th,
-            name_en: province.name_en,
-            parent: null
-          });
-        }
+      // Process amphures
+      province.amphure.forEach(amphure => {
+        const amphureMatches = selectedAmphure === 'all' || selectedAmphure === amphure.id.toString();
+        const amphureSearchMatches = searchTerm === '' ||
+          amphure.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          amphure.name_en.toLowerCase().includes(searchTerm.toLowerCase());
 
-        // Process amphures
-        province.amphure.forEach(amphure => {
-          const amphureMatches = selectedAmphure === 'all' || selectedAmphure === amphure.id.toString();
-          const amphureSearchMatches = searchTerm === '' ||
-            amphure.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            amphure.name_en.toLowerCase().includes(searchTerm.toLowerCase());
+        // Process tambons
+        amphure.tambon.forEach(tambon => {
+          const tambonMatches = selectedTambon === 'all' || selectedTambon === tambon.id.toString();
+          const tambonSearchMatches = searchTerm === '' ||
+            tambon.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            tambon.name_en.toLowerCase().includes(searchTerm.toLowerCase());
 
-          if (amphureMatches && amphureSearchMatches) {
-            // Add amphure to results if no specific tambon is selected
-            if (selectedTambon === 'all') {
-              results.push({
-                type: 'amphure',
-                id: amphure.id,
-                name_th: amphure.name_th,
-                name_en: amphure.name_en,
-                parent: province.name_th
-              });
-            }
-
-            // Process tambons
-            amphure.tambon.forEach(tambon => {
-              const tambonMatches = selectedTambon === 'all' || selectedTambon === tambon.id.toString();
-              const tambonSearchMatches = searchTerm === '' ||
-                tambon.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                tambon.name_en.toLowerCase().includes(searchTerm.toLowerCase());
-
-              if (tambonMatches && tambonSearchMatches) {
-                results.push({
-                  type: 'tambon',
-                  id: tambon.id,
-                  name_th: tambon.name_th,
-                  name_en: tambon.name_en,
-                  parent: `${amphure.name_th}, ${province.name_th}`
-                });
-              }
+          // Add tambon if it matches search OR filter criteria
+          if (tambonMatches && tambonSearchMatches && provinceMatches && amphureMatches) {
+            results.push({
+              type: 'tambon',
+              id: tambon.id,
+              name_th: tambon.name_th,
+              name_en: tambon.name_en,
+              parent: `${amphure.name_th}, ${province.name_th}`
             });
           }
+        });
+
+        // Add amphure if it matches search OR filter criteria (and no specific tambon is selected)
+        if (selectedTambon === 'all' && amphureMatches && amphureSearchMatches && provinceMatches) {
+          results.push({
+            type: 'amphure',
+            id: amphure.id,
+            name_th: amphure.name_th,
+            name_en: amphure.name_en,
+            parent: province.name_th
+          });
+        }
+      });
+
+      // Add province if it matches search OR filter criteria (and no specific amphure/tambon is selected)
+      if (selectedAmphure === 'all' && selectedTambon === 'all' && provinceMatches && provinceSearchMatches) {
+        results.push({
+          type: 'province',
+          id: province.id,
+          name_th: province.name_th,
+          name_en: province.name_en,
+          parent: null
         });
       }
     });
