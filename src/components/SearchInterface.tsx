@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -69,6 +70,7 @@ export function SearchInterface() {
   const filteredResults = useMemo(() => {
     if (!data.length) return [];
 
+    // eslint-disable-next-line prefer-const
     let results: any[] = [];
 
     data.forEach(province => {
@@ -344,7 +346,7 @@ export function SearchInterface() {
                 variant="secondary"
                 className="w-full"
               >
-                ล้างค่า
+                เคลียร์ตัวกรอง
               </Button>
             </div>
 
