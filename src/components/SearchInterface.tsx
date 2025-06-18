@@ -5,6 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Grid2X2, List } from 'lucide-react';
 
 interface Tambon {
   id: number;
@@ -44,6 +47,8 @@ export function SearchInterface() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProvince, setSelectedProvince] = useState<string>('all');
   const [selectedAmphure, setSelectedAmphure] = useState<string>('all');
+  const [selectedTambon, setSelectedTambon] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,13 +73,15 @@ export function SearchInterface() {
     let results: any[] = [];
 
     data.forEach(province => {
-      // Filter provinces
-      if (
-        searchTerm === '' ||
+      // Check if province matches filters
+      const provinceMatches = selectedProvince === 'all' || selectedProvince === province.id.toString();
+      const provinceSearchMatches = searchTerm === '' || 
         province.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        province.name_en.toLowerCase().includes(searchTerm.toLowerCase())
-      ) {
-        if (selectedProvince === 'all' || selectedProvince === province.id.toString()) {
+        province.name_en.toLowerCase().includes(searchTerm.toLowerCase());
+
+      if (provinceMatches && provinceSearchMatches) {
+        // Add province to results if no specific amphure/tambon is selected
+        if (selectedAmphure === 'all' && selectedTambon === 'all') {
           results.push({
             type: 'province',
             id: province.id,
@@ -82,54 +89,158 @@ export function SearchInterface() {
             name_en: province.name_en,
             parent: null
           });
+        }
 
-          // Filter amphures
-          province.amphure.forEach(amphure => {
-            if (
-              searchTerm === '' ||
-              amphure.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              amphure.name_en.toLowerCase().includes(searchTerm.toLowerCase())
-            ) {
-              if (selectedAmphure === 'all' || selectedAmphure === amphure.id.toString()) {
+        // Process amphures
+        province.amphure.forEach(amphure => {
+          const amphureMatches = selectedAmphure === 'all' || selectedAmphure === amphure.id.toString();
+          const amphureSearchMatches = searchTerm === '' ||
+            amphure.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            amphure.name_en.toLowerCase().includes(searchTerm.toLowerCase());
+
+          if (amphureMatches && amphureSearchMatches) {
+            // Add amphure to results if no specific tambon is selected
+            if (selectedTambon === 'all') {
+              results.push({
+                type: 'amphure',
+                id: amphure.id,
+                name_th: amphure.name_th,
+                name_en: amphure.name_en,
+                parent: province.name_th
+              });
+            }
+
+            // Process tambons
+            amphure.tambon.forEach(tambon => {
+              const tambonMatches = selectedTambon === 'all' || selectedTambon === tambon.id.toString();
+              const tambonSearchMatches = searchTerm === '' ||
+                tambon.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                tambon.name_en.toLowerCase().includes(searchTerm.toLowerCase());
+
+              if (tambonMatches && tambonSearchMatches) {
                 results.push({
-                  type: 'amphure',
-                  id: amphure.id,
-                  name_th: amphure.name_th,
-                  name_en: amphure.name_en,
-                  parent: province.name_th
-                });
-
-                // Filter tambons
-                amphure.tambon.forEach(tambon => {
-                  if (
-                    searchTerm === '' ||
-                    tambon.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    tambon.name_en.toLowerCase().includes(searchTerm.toLowerCase())
-                  ) {
-                    results.push({
-                      type: 'tambon',
-                      id: tambon.id,
-                      name_th: tambon.name_th,
-                      name_en: tambon.name_en,
-                      parent: `${amphure.name_th}, ${province.name_th}`
-                    });
-                  }
+                  type: 'tambon',
+                  id: tambon.id,
+                  name_th: tambon.name_th,
+                  name_en: tambon.name_en,
+                  parent: `${amphure.name_th}, ${province.name_th}`
                 });
               }
-            }
-          });
-        }
+            });
+          }
+        });
       }
     });
 
     return results.slice(0, 100); // Limit results for performance
-  }, [data, searchTerm, selectedProvince, selectedAmphure]);
+  }, [data, searchTerm, selectedProvince, selectedAmphure, selectedTambon]);
 
   const availableAmphures = useMemo(() => {
     if (selectedProvince === 'all' || !data.length) return [];
     const province = data.find(p => p.id.toString() === selectedProvince);
     return province ? province.amphure : [];
   }, [data, selectedProvince]);
+
+  const availableTambons = useMemo(() => {
+    if (selectedAmphure === 'all' || !data.length) return [];
+    const province = data.find(p => p.id.toString() === selectedProvince);
+    if (!province) return [];
+    const amphure = province.amphure.find(a => a.id.toString() === selectedAmphure);
+    return amphure ? amphure.tambon : [];
+  }, [data, selectedProvince, selectedAmphure]);
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedProvince('all');
+    setSelectedAmphure('all');
+    setSelectedTambon('all');
+  };
+
+  const renderCardView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+      {filteredResults.map((result, index) => (
+        <div
+          key={`${result.type}-${result.id}`}
+          className="p-4 border border-border rounded-lg hover:shadow-md transition-all duration-200 hover:border-primary/30 animate-fade-in bg-card"
+          style={{ animationDelay: `${index * 0.05}s` }}
+        >
+          <div className="flex items-start justify-between mb-2">
+            <h3 className="font-semibold text-foreground">
+              {result.name_th}
+            </h3>
+            <Badge
+              variant={
+                result.type === 'province'
+                  ? 'default'
+                  : result.type === 'amphure'
+                  ? 'secondary'
+                  : 'outline'
+              }
+              className="text-xs"
+            >
+              {result.type === 'province'
+                ? 'จังหวัด'
+                : result.type === 'amphure'
+                ? 'อำเภอ'
+                : 'ตำบล'}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mb-1">
+            {result.name_en}
+          </p>
+          {result.parent && (
+            <p className="text-xs text-muted-foreground">
+              {result.parent}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderTableView = () => (
+    <div className="max-h-96 overflow-y-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ชื่อภาษาไทย</TableHead>
+            <TableHead>ชื่อภาษาอังกฤษ</TableHead>
+            <TableHead>ประเภท</TableHead>
+            <TableHead>สังกัด</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredResults.map((result) => (
+            <TableRow key={`${result.type}-${result.id}`}>
+              <TableCell className="font-medium">{result.name_th}</TableCell>
+              <TableCell>{result.name_en}</TableCell>
+              <TableCell>
+                <Badge
+                  variant={
+                    result.type === 'province'
+                      ? 'default'
+                      : result.type === 'amphure'
+                      ? 'secondary'
+                      : 'outline'
+                  }
+                  className="text-xs"
+                >
+                  {result.type === 'province'
+                    ? 'จังหวัด'
+                    : result.type === 'amphure'
+                    ? 'อำเภอ'
+                    : 'ตำบล'}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {result.parent || '-'}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -149,7 +260,7 @@ export function SearchInterface() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div className="space-y-2">
               <Label htmlFor="search" className="text-sm font-medium">
                 ค้นหาทั่วไป
@@ -188,7 +299,10 @@ export function SearchInterface() {
               </Label>
               <Select 
                 value={selectedAmphure} 
-                onValueChange={setSelectedAmphure}
+                onValueChange={(value) => {
+                  setSelectedAmphure(value);
+                  setSelectedTambon('all'); // Reset tambon when amphure changes
+                }}
                 disabled={selectedProvince === 'all'}
               >
                 <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/50">
@@ -205,17 +319,58 @@ export function SearchInterface() {
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="tambon" className="text-sm font-medium">
+                ตำบล
+              </Label>
+              <Select 
+                value={selectedTambon} 
+                onValueChange={setSelectedTambon}
+                disabled={selectedAmphure === 'all'}
+              >
+                <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/50">
+                  <SelectValue placeholder="เลือกตำบล" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 bg-popover border border-border">
+                  <SelectItem value="all">ทั้งหมด</SelectItem>
+                  {availableTambons.map((tambon) => (
+                    <SelectItem key={tambon.id} value={tambon.id.toString()}>
+                      {tambon.name_th}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedProvince('all');
-                  setSelectedAmphure('all');
-                }}
-                className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors duration-200"
+              <Button
+                onClick={clearFilters}
+                variant="secondary"
+                className="w-full"
               >
                 ล้างค่า
-              </button>
+              </Button>
+            </div>
+
+            <div className="flex items-end">
+              <div className="flex rounded-md border border-input overflow-hidden w-full">
+                <Button
+                  variant={viewMode === 'card' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('card')}
+                  className="flex-1 rounded-none"
+                >
+                  <Grid2X2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('table')}
+                  className="flex-1 rounded-none"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -237,45 +392,7 @@ export function SearchInterface() {
               ไม่พบข้อมูลที่ตรงกับการค้นหา
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-              {filteredResults.map((result, index) => (
-                <div
-                  key={`${result.type}-${result.id}`}
-                  className="p-4 border border-border rounded-lg hover:shadow-md transition-all duration-200 hover:border-primary/30 animate-fade-in bg-card"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-foreground">
-                      {result.name_th}
-                    </h3>
-                    <Badge
-                      variant={
-                        result.type === 'province'
-                          ? 'default'
-                          : result.type === 'amphure'
-                          ? 'secondary'
-                          : 'outline'
-                      }
-                      className="text-xs"
-                    >
-                      {result.type === 'province'
-                        ? 'จังหวัด'
-                        : result.type === 'amphure'
-                        ? 'อำเภอ'
-                        : 'ตำบล'}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {result.name_en}
-                  </p>
-                  {result.parent && (
-                    <p className="text-xs text-muted-foreground">
-                      {result.parent}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
+            viewMode === 'card' ? renderCardView() : renderTableView()
           )}
         </CardContent>
       </Card>
