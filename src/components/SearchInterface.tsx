@@ -42,8 +42,8 @@ export function SearchInterface() {
   const [data, setData] = useState<Province[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedProvince, setSelectedProvince] = useState<string>('');
-  const [selectedAmphure, setSelectedAmphure] = useState<string>('');
+  const [selectedProvince, setSelectedProvince] = useState<string>('all');
+  const [selectedAmphure, setSelectedAmphure] = useState<string>('all');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,7 +74,7 @@ export function SearchInterface() {
         province.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
         province.name_en.toLowerCase().includes(searchTerm.toLowerCase())
       ) {
-        if (selectedProvince === '' || selectedProvince === province.id.toString()) {
+        if (selectedProvince === 'all' || selectedProvince === province.id.toString()) {
           results.push({
             type: 'province',
             id: province.id,
@@ -90,7 +90,7 @@ export function SearchInterface() {
               amphure.name_th.toLowerCase().includes(searchTerm.toLowerCase()) ||
               amphure.name_en.toLowerCase().includes(searchTerm.toLowerCase())
             ) {
-              if (selectedAmphure === '' || selectedAmphure === amphure.id.toString()) {
+              if (selectedAmphure === 'all' || selectedAmphure === amphure.id.toString()) {
                 results.push({
                   type: 'amphure',
                   id: amphure.id,
@@ -126,7 +126,7 @@ export function SearchInterface() {
   }, [data, searchTerm, selectedProvince, selectedAmphure]);
 
   const availableAmphures = useMemo(() => {
-    if (!selectedProvince || !data.length) return [];
+    if (selectedProvince === 'all' || !data.length) return [];
     const province = data.find(p => p.id.toString() === selectedProvince);
     return province ? province.amphure : [];
   }, [data, selectedProvince]);
@@ -172,7 +172,7 @@ export function SearchInterface() {
                   <SelectValue placeholder="เลือกจังหวัด" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 bg-popover border border-border">
-                  <SelectItem value="">ทั้งหมด</SelectItem>
+                  <SelectItem value="all">ทั้งหมด</SelectItem>
                   {data.map((province) => (
                     <SelectItem key={province.id} value={province.id.toString()}>
                       {province.name_th}
@@ -189,13 +189,13 @@ export function SearchInterface() {
               <Select 
                 value={selectedAmphure} 
                 onValueChange={setSelectedAmphure}
-                disabled={!selectedProvince}
+                disabled={selectedProvince === 'all'}
               >
                 <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/50">
                   <SelectValue placeholder="เลือกอำเภอ" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 bg-popover border border-border">
-                  <SelectItem value="">ทั้งหมด</SelectItem>
+                  <SelectItem value="all">ทั้งหมด</SelectItem>
                   {availableAmphures.map((amphure) => (
                     <SelectItem key={amphure.id} value={amphure.id.toString()}>
                       {amphure.name_th}
@@ -209,8 +209,8 @@ export function SearchInterface() {
               <button
                 onClick={() => {
                   setSearchTerm('');
-                  setSelectedProvince('');
-                  setSelectedAmphure('');
+                  setSelectedProvince('all');
+                  setSelectedAmphure('all');
                 }}
                 className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors duration-200"
               >
