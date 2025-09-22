@@ -181,23 +181,38 @@ export function SearchInterface() {
     [selected.sub_district_id]
   );
 
-  // Results list supports free-text search across current data graph
+  // Results list supports free-text search across current data graph, strictly respecting selected hierarchy
   const filteredResults = useMemo(() => {
     const q = (searchTerm || '').trim().toLowerCase();
     if (!provinces.length) return [] as any[];
 
+    const nameMatch = (th?: string, en?: string) => {
+      if (!q) return true;
+      const t = (th || '').toLowerCase();
+      const e = (en || '').toLowerCase();
+      return t.includes(q) || e.includes(q);
+    };
+
     const results: any[] = [];
 
-    provinces.forEach((province) => {
-      const provMatch = !q || province.name_th.toLowerCase().includes(q) || province.name_en.toLowerCase().includes(q);
+    for (const province of provinces) {
+      // Province filter gate
+      if (selected.province_id && province.id !== selected.province_id) continue;
 
-      province.districts.forEach((district) => {
-        const distMatch =
-          !q || district.name_th.toLowerCase().includes(q) || district.name_en.toLowerCase().includes(q);
+      const provMatch = nameMatch(province.name_th, province.name_en);
 
-        district.sub_districts.forEach((sd) => {
-          const sdMatch = !q || sd.name_th.toLowerCase().includes(q) || sd.name_en.toLowerCase().includes(q);
-          if (sdMatch && (selected.sub_district_id ? sd.id === selected.sub_district_id : true)) {
+      for (const district of province.districts) {
+        // District filter gate
+        if (selected.district_id && district.id !== selected.district_id) continue;
+
+        const distMatch = nameMatch(district.name_th, district.name_en);
+
+        for (const sd of district.sub_districts) {
+          // Sub-district filter gate
+          if (selected.sub_district_id && sd.id !== selected.sub_district_id) continue;
+
+          const sdMatch = nameMatch(sd.name_th, sd.name_en);
+          if (sdMatch) {
             results.push({
               type: 'sub_district',
               id: sd.id,
@@ -207,9 +222,10 @@ export function SearchInterface() {
               zip: sd.zip_code ?? '-',
             });
           }
-        });
+        }
 
-        if ((!selected.sub_district_id && distMatch) && (selected.district_id ? district.id === selected.district_id : true)) {
+        // Only add district rows when NOT narrowed down to a specific sub-district
+        if (!selected.sub_district_id && distMatch) {
           results.push({
             type: 'district',
             id: district.id,
@@ -218,15 +234,18 @@ export function SearchInterface() {
             parent: province.name_th,
           });
         }
-      });
-
-      if (
-        (!selected.district_id && !selected.sub_district_id && provMatch) &&
-        (selected.province_id ? province.id === selected.province_id : true)
-      ) {
-        results.push({ type: 'province', id: province.id, name_th: province.name_th, name_en: province.name_en });
       }
-    });
+
+      // Only add province rows when NOT narrowed down to district/sub-district
+      if (!selected.district_id && !selected.sub_district_id && provMatch) {
+        results.push({
+          type: 'province',
+          id: province.id,
+          name_th: province.name_th,
+          name_en: province.name_en,
+        });
+      }
+    }
 
     return results.slice(0, 100);
   }, [provinces, searchTerm, selected.province_id, selected.district_id, selected.sub_district_id]);
