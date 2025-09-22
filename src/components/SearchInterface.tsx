@@ -53,7 +53,7 @@ export function SearchInterface() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('https://raw.githubusercontent.com/kongvut/thai-province-data/master/api_province_with_amphure_tambon.json');
+        const response = await fetch('https://raw.githubusercontent.com/kongvut/thai-province-data/refs/heads/master/api/latest/province_with_district_and_sub_district.json');
         const result = await response.json();
         setData(result);
         console.log('Loaded provinces:', result.length);
